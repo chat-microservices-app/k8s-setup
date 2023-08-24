@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-chat-service
+  labels:
+    app: postgres-chat-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-chat-service
+  template:
+    metadata:
+      labels:
+        app: postgres-chat-service
+    spec:
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-chat-service-claim
+      containers:
+        - name: postgres
+          image: postgres:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: chat_service
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-chat-service-password
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/data/pgdata
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-storage

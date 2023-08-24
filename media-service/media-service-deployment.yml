@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: media-service
+  labels:
+    app: media-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: media-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: media-service
+    spec:
+      containers:
+        - name: media-service-app
+          image: jeffdiaz/media-mss:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8200
+          env:
+            - name: SERVER_PORT
+              value: "8200"
+            - name: SECURITY_SERVICE_URL
+              value: "http://${SECURITY_SERVICE_SERVICE_HOST}:${SECURITY_SERVICE_SERVICE_PORT}"
+            - name: USER_MANAGEMENT_SERVICE_URL
+              value: "http://${USER_MANAGEMENT_SERVICE_HOST}:${USER_MANAGEMENT_SERVICE_PORT}"
+          envFrom:
+            - secretRef:
+                name: aws-credentials
+            - configMapRef:
+                name: aws-config
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/bin/bash", "-c", "aws configure set aws_access_key_id $aws_access_key_id && aws configure set aws_secret_access_key $aws_secret_access_key  && aws configure set region $AWS_DEFAULT_REGION" ]
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8200
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5

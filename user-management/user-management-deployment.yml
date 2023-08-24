@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-management
+  labels:
+    app: user-management
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-management
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: user-management
+    spec:
+      containers:
+        - name: user-management-app
+          image: jeffdiaz/user-management-mss:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8040
+          envFrom:
+            - secretRef:
+                name: user-management-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8040"
+            - name: DATABASE_URL
+              value: "//192.168.1.99:5431/user_service"
+            - name: KAFKA_URL
+              value: "192.168.1.99:29092"
+            - name: SECURITY_SERVICE_URL
+              value: "http://${SECURITY_SERVICE_SERVICE_HOST}:${SECURITY_SERVICE_SERVICE_PORT}"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8040
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5

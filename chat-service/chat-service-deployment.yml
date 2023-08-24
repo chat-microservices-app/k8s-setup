@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: chat-service
+  labels:
+    app: chat-service
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: chat-service
+  template:
+    metadata:
+      labels:
+        app: chat-service
+    spec:
+      containers:
+        - name: chat-service
+          image: jeffdiaz/chat-mss:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8100
+          envFrom:
+            - secretRef:
+                name: chat-service-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8100"
+            - name: DATABASE_URL
+              value: "192.168.1.99:5430/chat_service"
+            - name: KAFKA_URL
+              value: "192.168.1.99:29092"
+            - name: REDIS_URL
+              value: "192.168.1.99"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: RABBITMQ_URL
+              value: "192.168.1.99"
+            - name: RABBITMQ_DEFAULT_PORT
+              value: "5672"
+            - name: RABBITMQ_STOMP_PORT
+              value: "61613"
+            - name: SECURITY_SERVICE_URL
+              value: "http://${SECURITY_SERVICE_SERVICE_HOST}:${SECURITY_SERVICE_SERVICE_PORT}"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8100
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 7
+            failureThreshold: 5
